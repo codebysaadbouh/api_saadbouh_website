@@ -84,7 +84,6 @@ class Category
     private ?string $description = null;
 
     #[ORM\OneToMany(mappedBy: 'category', targetEntity: Article::class)]
-    #[Groups(['category_read'])]
     private Collection $article;
 
     public function __construct()
@@ -95,7 +94,7 @@ class Category
     #[Groups(['category_read'])]
     public function getArticleNumbers(): int
     {
-        return $this->article->count();
+        return $this->getArticle()->count();
     }
 
     public function getId(): ?int

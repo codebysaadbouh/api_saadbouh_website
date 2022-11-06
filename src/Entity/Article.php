@@ -6,13 +6,16 @@ use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Link;
+use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use App\Controller\PublishStatusArticleController;
 use App\Repository\ArticleRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -21,8 +24,16 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: ArticleRepository::class)]
 #[ApiResource(
+    normalizationContext: [
+        'groups' => ['article_read'],
+        'openapi_definition_name' => 'Collection',
+    ],
+    denormalizationContext: [
+        'groups' => ['article_write'],
+        'openapi_definition_name' => 'Write',
+        ],
     paginationEnabled: true,
-    paginationItemsPerPage: 15
+    paginationItemsPerPage: 15,
 )]
 #[ApiResource(
     operations: [
@@ -31,15 +42,15 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 'summary' => 'Get an article',
                 'description' => 'Récupération d\'un article en fonction de son ID',
             ]),
-        new Post(
-            openapiContext: [
-                'summary' => 'Create an article',
-                'description' => 'Création d\'un article',
-            ]),
         new GetCollection(
             openapiContext: [
                 'summary' => 'Get all articles',
                 'description' => 'Récupération de tous les articles',
+            ]),
+        new Post(
+            openapiContext: [
+                'summary' => 'Create an article',
+                'description' => 'Création d\'un article',
             ]),
         new Put(
             openapiContext: [
@@ -52,8 +63,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
                 'description' => 'Suppression d\'un article en fonction de son ID',
             ]),
     ],
-    normalizationContext: ['groups' => ['article_read']],
-    denormalizationContext: ['groups' => ['article_write']],
     order: ['createdAt' => 'DESC']
 )]
 #[ApiResource(
@@ -77,7 +86,27 @@ use Symfony\Component\Serializer\Annotation\Groups;
     ])],
     uriVariables: [
         'categoryID' => new Link(toProperty: 'category', fromClass: Category::class),
-    ]
+    ],
+)]
+
+#[ApiResource(
+    operations: [
+        new Put(
+            uriTemplate: '/articles/{id}/publish',
+            controller: PublishStatusArticleController::class,
+            openapiContext: [
+                'summary' => 'Publish an article by changing the status',
+                'description' => 'Publication d\'un article en fonction de son ID',
+                'requestBody'=> [
+                    'content' => [
+                        'application/json' => [
+                            'schema' => []
+                        ]
+                    ]
+                ]
+            ],
+            name: 'publish',
+    )],
 )]
 #[ApiFilter(SearchFilter::class, properties:['title'=> 'partial'])]
 #[ApiFilter(DateFilter::class, properties: ['createdAt'])]
@@ -120,6 +149,16 @@ class Article
     #[ORM\JoinColumn(nullable: false)]
     #[Groups(['article_read', 'article_write'])]
     private ?Category $category = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    #[
+        Groups(['article_read','category_rea d', 'article_write']),
+        ApiProperty(openapiContext: [
+            'type' => 'boolean',
+            'description' => 'Mettre en ligne ou non l\'article',
+        ]),
+    ]
+    private ?bool $isPublished = null;
 
     public function getId(): ?int
     {
@@ -206,6 +245,18 @@ class Article
     public function setCategory(?Category $category): self
     {
         $this->category = $category;
+
+        return $this;
+    }
+
+    public function isIsPublished(): ?bool
+    {
+        return $this->isPublished;
+    }
+
+    public function setIsPublished(bool $isPublished): self
+    {
+        $this->isPublished = $isPublished;
 
         return $this;
     }

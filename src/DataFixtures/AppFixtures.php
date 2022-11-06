@@ -39,6 +39,7 @@ class AppFixtures extends Fixture
                 $Article->setContent($fakeData->realText(500,2));
                 $Article->setCover($fakeData->imageUrl(640, 480, 'Cover'));
                 $Article->setCategory($Category);
+                $Article->setIsPublished(mt_rand(0, 1));
                 $manager->persist($Article);
             }
         }
